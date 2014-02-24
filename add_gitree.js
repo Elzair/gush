@@ -21,13 +21,13 @@ var main = function() {
     }
 
     // Create header of git blob object
-    var header = new Buffer('blob 1234\0', 'ascii');
-    header.writeUInt32BE(data.length, 5);
+    var header = new Buffer(util.format('blob %d\u0000', data.length));
 
     // Create a buffer with the contents of the header and the input file
-    var store = new Buffer(data.length+header.length);
+    var store = new Buffer(header.length+data.length);
     header.copy(store);
     data.copy(store, header.length);
+    console.log(store.toString());
 
     // Generate SHA-1 hash of blob object
     var shasum = crypto.createHash('sha1');
