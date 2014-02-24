@@ -1,0 +1,12 @@
+{
+  "clear_new_path": true,
+  "paths": [
+    {
+      "repo_path": "*",
+      "new_path": "/app/current"
+    }
+  ],
+  "commands": [
+    "cd /app/current && bundle install --path vendor/bundle && rake assets:precompile"
+  ]
+}
