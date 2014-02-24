@@ -3,16 +3,20 @@
 var exec   = require('child_process').exec
   , fs     = require('fs')
   , crypto = require('crypto')
+  , path   = require('path')
+  , util   = require('util')
   , zlib   = require('zlib');
 
 var main = function() {
-  // Get arguments passed to script
+  // Get directory to find .gitree file
   var cmdargs = process.argv.slice(2,process.argv.length);
+  var cwd = cmdargs[0];
+  var pa = path.join(cwd, '.gitree');
 
   // Read input file
-  fs.readFile(cmdargs[0], function(err, data) {
+  fs.readFile(pa, function(err, data) {
     if (err) {
-      console.log(JSON.stringify(err));
+      console.error(JSON.stringify(err));
       return 1;
     }
 
@@ -30,8 +34,27 @@ var main = function() {
     shasum.update(store);
     var hash = shasum.digest('hex');
 
+    // Compress object & store it in git repository
     zlib.deflate(store, function(err, buff) {
-
+      if (err) {
+        console.error(JSON.stringify(err));
+        return 1;
+      }
+      var dir_path = path.join(cwd, '.git', 'objects', hash.substring(0,2));
+      fs.mkdir(dir_path, function(err) {
+        if (err) {
+          console.error(JSON.stringify(err));
+          return 1;
+        }
+        var file_path = path.join(dir_path, hash.substring(2, hash.length));
+        fs.writeFile(file_path, buff, function(err) {
+          if (err) {
+            console.error(JSON.stringify(err));
+            return 1;
+          }
+          console.log(util.format("%s", hash));
+        });
+      });
     });
   });
 };
