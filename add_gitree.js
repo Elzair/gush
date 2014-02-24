@@ -8,10 +8,10 @@ var exec   = require('child_process').exec
   , zlib   = require('zlib');
 
 var main = function() {
-  // Get directory to find .gitree file
+  // Get directory to find .gitree.json file
   var cmdargs = process.argv.slice(2,process.argv.length);
   var cwd = cmdargs[0];
-  var pa = path.join(cwd, '.gitree');
+  var pa = path.join(cwd, '.gitree.json');
 
   // Read input file
   fs.readFile(pa, function(err, data) {
