@@ -101,12 +101,29 @@ var write_object = function(obj_path, buff, hash, cb) {
   var file_path = path.join(obj_path, hash.substring(2, hash.length));
   fs.writeFile(file_path, buff, function(err) {
     if (err) {
-      cb(err);
-      return;
+      if (err.code === "EACESS") {
+        console.log("There is already a .gush.json file in this repository!");
+        err = null;
+      }
+      else {
+        cb(err);
+        return;
+      }
     }
     console.log(util.format("%s", hash));
     cb(err);
   });
+};
+
+var add_object_header = function(data, type) {
+    // Create header of git blob object
+    var header = new Buffer(util.format('%s %d\u0000', type, data.length));
+
+    // Create a buffer with the contents of the header and the input file
+    var store = new Buffer(header.length+data.length);
+    header.copy(store);
+    data.copy(store, header.length);
+    return store;
 };
 
 /**
@@ -117,9 +134,7 @@ var write_object = function(obj_path, buff, hash, cb) {
 var generate_hash = function(buff) {
   var shasum = crypto.createHash('sha1');
   shasum.update(buff);
-  var hash = shasum.digest('hex');
-  console.log(hash);
-  return hash;
+  return shasum.digest('hex');
 };
 
 /** 
@@ -169,14 +184,7 @@ var add_gush_blob = function(cwd, gush_path, cb) {
       return;
     }
 
-    // Create header of git blob object
-    var header = new Buffer(util.format('blob %d\u0000', data.length));
-
-    // Create a buffer with the contents of the header and the input file
-    var store = new Buffer(header.length+data.length);
-    header.copy(store);
-    data.copy(store, header.length);
-    //console.log(store.toString());
+    var store = add_object_header(data, 'blob');
 
     // Generate SHA-1 hash of blob object
     var hash = generate_hash(store);
@@ -202,7 +210,7 @@ var add_gush_tag  = function(cwd, hash, cb) {
     // Get formateed date
     var now = dateformat(new Date(), "ddd mmmm dd HH:MM:ss yyyy o");
 
-    // Create tag object
+    // Create tag contents
     var tag_str = [
       'object ' + hash,
       'type blob',
@@ -214,11 +222,13 @@ var add_gush_tag  = function(cwd, hash, cb) {
     console.log(tag_str);
     var tag_buf = new Buffer(tag_str);
 
+    var store = add_object_header(tag_buf, 'tag');
+
     // Get SHA-1 hash of tag object
-    var tag_hash = generate_hash(tag_buf);
+    var tag_hash = generate_hash(store);
 
     // Compress 
-    caw_object(cwd, tag_buf, tag_hash, cb);
+    caw_object(cwd, store, tag_hash, cb);
   });
 };
 
