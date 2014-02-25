@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
-var exec   = require('child_process').exec
-  , fs     = require('fs')
-  , crypto = require('crypto')
-  , path   = require('path')
-  , util   = require('util')
-  , zlib   = require('zlib');
+var exec       = require('child_process').exec
+  , fs         = require('fs')
+  , crypto     = require('crypto')
+  , path       = require('path')
+  , util       = require('util')
+  , zlib       = require('zlib')
+  , dateformat = require('dateformat')
+  ;
 
 /**
  * This function handles any errors.
@@ -197,15 +199,15 @@ var add_gush_tag  = function(cwd, hash, cb) {
       handle_error(err);
     }
 
-    // Get the Unix timestamp
-    var tstamp = Math.floor(Date.now()/1000);
+    // Get formateed date
+    var now = dateformat(new Date(), "ddd mmmm dd HH:MM:ss yyyy o");
 
     // Create tag object
     var tag_str = [
       'object ' + hash,
       'type blob',
       'tag gush_json',
-      'tagger ' + user_info.name + ' <' + user_info.email + '> ' + tstamp.toString(),
+      'tagger ' + user_info.name + ' <' + user_info.email + '> ' + now.toString(),
       '',
       'gush.json'
     ].join('\n');
