@@ -7,6 +7,10 @@ var exec   = require('child_process').exec
   , util   = require('util')
   , zlib   = require('zlib');
 
+/**
+ * This function handles any errors.
+ * @param err Error object
+ */
 var handle_error = function(err) {
   if (err) {
     console.error(JSON.stringify(err));
@@ -14,32 +18,154 @@ var handle_error = function(err) {
   }
 };
 
-var write_blob = function(dir_path, buff, hash) {
-  var file_path = path.join(dir_path, hash.substring(2, hash.length));
-  fs.stat(file_path, function(err, stats) {
-    handle_error(err);
-    if (stats.isFile()) {
-      console.log('Warning: Identical .gitree.json already exists in repository!');
-      console.log(util.format("%s", hash));
+/**
+ * This function returns the home directory of the user executing this script.
+ */
+var get_user_home = function() {
+  return process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+};
+
+/**
+ * This function processes a git config file and attempts to find the username and email.
+ * @param file_path path to the config file
+ * @param cb callback function to execute
+ */
+var process_config_file = function(file_path, cb) {
+  fs.readFile(file_path, function(err, data) {
+    var user_info = {};
+    if (err) {
+      cb(err, user_info);
+      return;
     }
-    else {
-      fs.writeFile(file_path, buff, function(err) {
-        handle_error(err);
-        console.log(util.format("%s", hash));
-      });
+    var contents = data.toString().split('\n');
+    var user_re = /\[user\]/, not_user_re = /\[(?!user)\]/;
+    var name_re = /name[ \t]*=[ \t]*\w+/, email_re = /email[ \t]*=[ \t]*\w+@\w+\.\w+/;
+    var i = 0;
+    var in_user = false;
+    for (i=0; i<contents.length; i++) {
+      if (!in_user) {
+        in_user = contents[i].match(user_re) ? true : false;
+      }
+      else {
+        if (contents[i].match(not_user_re)) {
+          in_user = false;
+        }
+        else if (contents[i].match(name_re)) {
+          user_info.name = contents[i].split(/\s+/)[3];
+        }
+        else if (contents[i].match(email_re)) {
+          user_info.email = contents[i].split(/\s+/)[3];
+        }
+      }
     }
+    cb(err, user_info);
   });
 };
 
-var main = function() {
-  // Get directory to find .gitree.json file
-  var cmdargs = process.argv.slice(2,process.argv.length);
-  var cwd = cmdargs[0];
-  var pa = path.join(cwd, '.gitree.json');
+/** 
+ * This function return the name & email for the tag object.
+ * @param cwd directory containing the git repository
+ * @param cb callback function to execute
+ */
+var get_user_info = function(cwd, cb) {
+  // First try to get user info from local .git/config
+  var user_info = {};
+  process_config_file(path.join(cwd, '.git', 'config'), function(err, info) {
+    if (err) {
+      cb(err, user_info);
+    }
 
+    // Then, also read data from the .gitconfig file in the user's home directory
+    process_config_file(path.join(get_user_home(), '.gitconfig'), function(err, more_info) {
+      if (err) {
+        cb(err, user_info);
+        return;
+      }
+      user_info.name = info.name || more_info.name || process.env.GIT_COMMITTER_NAME || process.env.GIT_AUTHOR_NAME;
+      user_info.email = info.email || more_info.email || process.env.GIT_COMMITTER_EMAIL || process.env.GIT_AUTHOR_EMAIL;
+      cb(err, user_info);
+    });
+  });
+};
+
+/**
+ * This function writes an object to the git repository.
+ * @param dir_path path to .git/objects
+ * @param buff buffer containing the compressed data of the object
+ * @param hash SHA-1 hash of object
+ * @param cb callback function to execute
+ */
+var write_object = function(dir_path, buff, hash, cb) {
+  var file_path = path.join(dir_path, hash.substring(2, hash.length));
+  fs.writeFile(file_path, buff, function(err) {
+    if (err) {
+      cb(err);
+      return;
+    }
+    console.log(util.format("%s", hash));
+    cb(err);
+  });
+};
+
+/**
+ * This function return the SHA-1 hash of a git object.
+ * @param buff buffer containing the object
+ * @return SHA-1 hash
+ */
+var generate_hash = function(buff) {
+  var shasum = crypto.createHash('sha1');
+  shasum.update(buff);
+  var hash = shasum.digest('hex');
+  console.log(hash);
+  return hash;
+};
+
+/** 
+ * This function compresses and writes an object to the git repository.
+ * @param cwd path to git repository
+ * @param bu buffer containing object
+ * @param hash SHA-1 hash of object
+ * @param cb callback function to execute
+ */
+var caw_object = function(cwd, bu, hash, cb) {
+  zlib.deflate(bu, function(err, buff) {
+    if (err) {
+      cb(err, hash);
+      return;
+    }
+
+    var dir_path = path.join(cwd, '.git', 'objects', hash.substring(0,2));
+    fs.mkdir(dir_path, function(err) {
+      if (err) {
+        if (err.code === "EEXIST") {
+          err = null;
+        }
+        else {
+          cb(err, hash);
+          return;
+        }
+      }
+      write_object(dir_path, buff, hash, function(err) {
+        cb(err, hash);
+      });
+    });
+  });
+};
+
+/*
+ * This function adds the .gitree.json file in the current working directory to the git
+ * repository in the same directory.
+ * @param cwd path to git repository
+ * @param gitree_path directory containing .gitree.json
+ * @param cb callback function to execute
+ */
+var add_gitree_blob = function(cwd, gitree_path, cb) {
   // Read input file
-  fs.readFile(pa, function(err, data) {
-    handle_error(err);
+  fs.readFile(path.join(gitree_path, '.gitree.json'), function(err, data) {
+    if (err) {
+      cb(err, null);
+      return;
+    }
 
     // Create header of git blob object
     var header = new Buffer(util.format('blob %d\u0000', data.length));
@@ -48,30 +174,80 @@ var main = function() {
     var store = new Buffer(header.length+data.length);
     header.copy(store);
     data.copy(store, header.length);
-    console.log(store.toString());
+    //console.log(store.toString());
 
     // Generate SHA-1 hash of blob object
-    var shasum = crypto.createHash('sha1');
-    shasum.update(store);
-    var hash = shasum.digest('hex');
+    var hash = generate_hash(store);
 
     // Compress object & store it in git repository
-    zlib.deflate(store, function(err, buff) {
+    caw_object(cwd, store, hash, cb);
+  });
+};
+
+/**
+ * This function adds a tag to the current .gitree.json file.
+ * @param cwd path to git repository
+ * @param hash SHA-1 hash of blob object containing current .gitree.json file
+ * @param cb callback function to execute
+ */
+var add_gitree_tag  = function(cwd, hash, cb) {
+  // Next, get user name & email
+  get_user_info(cwd, function(err, user_info) {
+    if (err) {
+      handle_error(err);
+    }
+
+    // Get the Unix timestamp
+    var tstamp = Math.floor(Date.now()/1000);
+
+    // Create tag object
+    var tag_str = [
+      'object ' + hash,
+      'type blob',
+      'tag gitree_json',
+      'tagger ' + user_info.name + ' <' + user_info.email + '> ' + tstamp.toString(),
+      '',
+      'gitree.json'
+    ].join('\n');
+    console.log(tag_str);
+    var tag_buf = new Buffer(tag_str);
+
+    // Get SHA-1 hash of tag object
+    var tag_hash = generate_hash(tag_buf);
+
+    // Compress 
+    caw_object(cwd, tag_buf, tag_hash, cb);
+  });
+};
+
+/**
+ * This is the main function.
+ */
+var main = function() {
+  // Get directory of  file
+  var script_name = path.basename(process.argv[1]);
+  var cmdargs = process.argv.slice(2,process.argv.length);
+  var gitree_path = cmdargs[0];
+  if (!gitree_path) {
+    console.error(util.format("Usage: %s /directory/of/gitree.json/file [/path/to/git/repository]", script_name));
+    process.exit(1);
+  }
+  var cwd = cmdargs[1] || process.cwd();
+  console.log('CWD: ' + cwd);
+ 
+  // Get the hash of the current .gitree.json file
+  add_gitree_blob(cwd, gitree_path, function(err, hash) {
+    handle_error(err);
+
+    // Create a tag object for the current .gitree.json file
+    add_gitree_tag(cwd, hash, function(err, tag_hash) {
       handle_error(err);
 
-      var dir_path = path.join(cwd, '.git', 'objects', hash.substring(0,2));
-      fs.stat(dir_path, function(err, stats) {
+      // Write tag file
+      fs.writeFile(path.join(cwd, '.git', 'refs', 'tags', 'gitree_json'), tag_hash, function(err) {
         handle_error(err);
 
-        if (stats.isDirectory()) {
-          write_blob(dir_path, buff, hash);
-        }
-        else {
-          fs.mkdir(dir_path, function(err) {
-            handle_error(err);
-            write_blob(dir_path, buff, hash);
-          });
-        }
+        console.log('Tag created!');
       });
     });
   });
