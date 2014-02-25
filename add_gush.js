@@ -90,13 +90,13 @@ var get_user_info = function(cwd, cb) {
 
 /**
  * This function writes an object to the git repository.
- * @param dir_path path to .git/objects
+ * @param obj_path path to git_repository/.git/objects/hash[0:2]
  * @param buff buffer containing the compressed data of the object
  * @param hash SHA-1 hash of object
  * @param cb callback function to execute
  */
-var write_object = function(dir_path, buff, hash, cb) {
-  var file_path = path.join(dir_path, hash.substring(2, hash.length));
+var write_object = function(obj_path, buff, hash, cb) {
+  var file_path = path.join(obj_path, hash.substring(2, hash.length));
   fs.writeFile(file_path, buff, function(err) {
     if (err) {
       cb(err);
@@ -153,15 +153,15 @@ var caw_object = function(cwd, bu, hash, cb) {
 };
 
 /*
- * This function adds the .gitree.json file in the current working directory to the git
+ * This function adds the .gush.json file in the current working directory to the git
  * repository in the same directory.
  * @param cwd path to git repository
- * @param gitree_path directory containing .gitree.json
+ * @param gush_path directory containing .gush.json
  * @param cb callback function to execute
  */
-var add_gitree_blob = function(cwd, gitree_path, cb) {
+var add_gush_blob = function(cwd, gush_path, cb) {
   // Read input file
-  fs.readFile(path.join(gitree_path, '.gitree.json'), function(err, data) {
+  fs.readFile(path.join(gush_path, '.gush.json'), function(err, data) {
     if (err) {
       cb(err, null);
       return;
@@ -185,12 +185,12 @@ var add_gitree_blob = function(cwd, gitree_path, cb) {
 };
 
 /**
- * This function adds a tag to the current .gitree.json file.
+ * This function adds a tag to the current .gush.json file.
  * @param cwd path to git repository
- * @param hash SHA-1 hash of blob object containing current .gitree.json file
+ * @param hash SHA-1 hash of blob object containing current .gush.json file
  * @param cb callback function to execute
  */
-var add_gitree_tag  = function(cwd, hash, cb) {
+var add_gush_tag  = function(cwd, hash, cb) {
   // Next, get user name & email
   get_user_info(cwd, function(err, user_info) {
     if (err) {
@@ -204,10 +204,10 @@ var add_gitree_tag  = function(cwd, hash, cb) {
     var tag_str = [
       'object ' + hash,
       'type blob',
-      'tag gitree_json',
+      'tag gush_json',
       'tagger ' + user_info.name + ' <' + user_info.email + '> ' + tstamp.toString(),
       '',
-      'gitree.json'
+      'gush.json'
     ].join('\n');
     console.log(tag_str);
     var tag_buf = new Buffer(tag_str);
@@ -227,24 +227,24 @@ var main = function() {
   // Get directory of  file
   var script_name = path.basename(process.argv[1]);
   var cmdargs = process.argv.slice(2,process.argv.length);
-  var gitree_path = cmdargs[0];
-  if (!gitree_path) {
-    console.error(util.format("Usage: %s /directory/of/gitree.json/file [/path/to/git/repository]", script_name));
+  var gush_path = cmdargs[0];
+  if (!gush_path) {
+    console.error(util.format("Usage: %s /directory/of/gush.json/file [/path/to/git/repository]", script_name));
     process.exit(1);
   }
   var cwd = cmdargs[1] || process.cwd();
   console.log('CWD: ' + cwd);
  
-  // Get the hash of the current .gitree.json file
-  add_gitree_blob(cwd, gitree_path, function(err, hash) {
+  // Get the hash of the current .gush.json file
+  add_gush_blob(cwd, gush_path, function(err, hash) {
     handle_error(err);
 
-    // Create a tag object for the current .gitree.json file
-    add_gitree_tag(cwd, hash, function(err, tag_hash) {
+    // Create a tag object for the current .gush.json file
+    add_gush_tag(cwd, hash, function(err, tag_hash) {
       handle_error(err);
 
       // Write tag file
-      fs.writeFile(path.join(cwd, '.git', 'refs', 'tags', 'gitree_json'), tag_hash, function(err) {
+      fs.writeFile(path.join(cwd, '.git', 'refs', 'tags', 'gush_json'), tag_hash, function(err) {
         handle_error(err);
 
         console.log('Tag created!');
