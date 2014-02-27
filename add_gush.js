@@ -7,88 +7,9 @@ var exec       = require('child_process').exec
   , util       = require('util')
   , zlib       = require('zlib')
   , dateformat = require('dateformat')
+  , err        = require('./lib/err')
+  , config     = require('./lib/config')
   ;
-
-/**
- * This function handles any errors.
- * @param err Error object
- */
-var handle_error = function(err) {
-  if (err) {
-    console.error(JSON.stringify(err));
-    process.exit(1);
-  }
-};
-
-/**
- * This function returns the home directory of the user executing this script.
- */
-var get_user_home = function() {
-  return process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
-};
-
-/**
- * This function processes a git config file and attempts to find the username and email.
- * @param file_path path to the config file
- * @param cb callback function to execute
- */
-var process_config_file = function(file_path, cb) {
-  fs.readFile(file_path, function(err, data) {
-    var user_info = {};
-    if (err) {
-      cb(err, user_info);
-      return;
-    }
-    var contents = data.toString().split('\n');
-    var user_re = /\[user\]/, not_user_re = /\[(?!user)\]/;
-    var name_re = /name[ \t]*=[ \t]*\w+/, email_re = /email[ \t]*=[ \t]*\w+@\w+\.\w+/;
-    var i = 0;
-    var in_user = false;
-    for (i=0; i<contents.length; i++) {
-      if (!in_user) {
-        in_user = contents[i].match(user_re) ? true : false;
-      }
-      else {
-        if (contents[i].match(not_user_re)) {
-          in_user = false;
-        }
-        else if (contents[i].match(name_re)) {
-          user_info.name = contents[i].split(/\s+/)[3];
-        }
-        else if (contents[i].match(email_re)) {
-          user_info.email = contents[i].split(/\s+/)[3];
-        }
-      }
-    }
-    cb(err, user_info);
-  });
-};
-
-/** 
- * This function return the name & email for the tag object.
- * @param cwd directory containing the git repository
- * @param cb callback function to execute
- */
-var get_user_info = function(cwd, cb) {
-  // First try to get user info from local .git/config
-  var user_info = {};
-  process_config_file(path.join(cwd, '.git', 'config'), function(err, info) {
-    if (err) {
-      cb(err, user_info);
-    }
-
-    // Then, also read data from the .gitconfig file in the user's home directory
-    process_config_file(path.join(get_user_home(), '.gitconfig'), function(err, more_info) {
-      if (err) {
-        cb(err, user_info);
-        return;
-      }
-      user_info.name = info.name || more_info.name || process.env.GIT_COMMITTER_NAME || process.env.GIT_AUTHOR_NAME;
-      user_info.email = info.email || more_info.email || process.env.GIT_COMMITTER_EMAIL || process.env.GIT_AUTHOR_EMAIL;
-      cb(err, user_info);
-    });
-  });
-};
 
 /**
  * This function writes an object to the git repository.
@@ -202,9 +123,9 @@ var add_gush_blob = function(cwd, gush_path, cb) {
  */
 var add_gush_tag  = function(cwd, hash, cb) {
   // Next, get user name & email
-  get_user_info(cwd, function(err, user_info) {
+  config.get_user_info(cwd, function(err, user_info) {
     if (err) {
-      handle_error(err);
+      err.handle_error(err);
     }
 
     // Get formateed date
@@ -249,15 +170,15 @@ var main = function() {
  
   // Get the hash of the current .gush.json file
   add_gush_blob(cwd, gush_path, function(err, hash) {
-    handle_error(err);
+    err.handle_error(err);
 
     // Create a tag object for the current .gush.json file
     add_gush_tag(cwd, hash, function(err, tag_hash) {
-      handle_error(err);
+      err.handle_error(err);
 
       // Write tag file
       fs.writeFile(path.join(cwd, '.git', 'refs', 'tags', 'gush_json'), tag_hash, function(err) {
-        handle_error(err);
+        err.handle_error(err);
 
         console.log('Tag created!');
       });
