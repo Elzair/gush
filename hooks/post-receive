@@ -7,31 +7,22 @@
 var exec = require('child_process').exec
   , fs   = require('fs');
 
+var handle_error = function(error, stderr) {
+  if (stderr !== '') { console.error('stderr: ' + stderr); process.exit(1); }
+  if (error !== null) { console.error('exec error: ' + error); process.exit(1); }
+};
+
 // Get blob object by hash and copy it to the new working directory
 var get_blob = function(hash, cwd, nwd) {
-  exec("git cat-file -p " + hash + " > " + nwd,
-    {cwd: cwd},
-    function(error, stdout, stderr) {
-      if (stderr !== '') {
-        console.log('stderr: ' + stderr);
-        return;
-      }
-      if (error !== null) {
-        console.log('exec error: ' + error);
-        return;
-      }
-      if (stdout !== '') {
-        console.log(stdout);
-      }
-    }
-  );
+  exec("git cat-file -p " + hash + " > " + nwd, {cwd: cwd}, function(error, stdout, stderr) {
+      handle_error(error, stderr);
+      if (stdout !== '') { console.log(stdout); }
+  });
 };
 
 // Parse tree object
-var get_tree_helper = function(stdout, cwd, nwd) {
-  var lines = stdout.split('\n');
-  var i = 0, line = '', dirname = '', fname = '', hash = '', np = '';
-
+var get_tree_helper = function(stdout, cwd, cfg) {
+  var lines = stdout.split('\n'), i = 0, line = '', dirname = '', fname = '', hash = '', np = '';
   // First handle all the blobs
   for (i=0; i<lines.length; i++) {
     line = lines[i].split(' ');
@@ -57,42 +48,26 @@ var get_tree_helper = function(stdout, cwd, nwd) {
 };
 
 // Get tree object by hash
-var get_tree = function(hash, cwd, nwd) {
-  exec("git cat-file -p " + hash,
-    {cwd: cwd},
-    function(error, stdout, stderr) {
-      if (stderr !== '') {
-        console.log('stderr: ' + stderr);
-        return;
-      }
-      if (error !== null) {
-        console.log('exec error: ' + error);
-        return;
-      }
-      get_tree_helper(stdout, cwd, nwd);
-    }
-  );
+var get_tree = function(hash, cwd, cfg) {
+  exec("git cat-file -p " + hash, {cwd: cwd}, function(error, stdout, stderr) {
+    handle_error(error, stderr);
+    get_tree_helper(stdout, cwd, cfg);
+  });
 };
 
 var main = function() {
   // Get arguments passed to script
   var cmdargs = process.argv.slice(2,process.argv.length);
-
-  // Get the tree object of the commit object pointed to by HEAD.
-  exec("git cat-file -p $(cat .git/$(cat .git/HEAD | awk '{print $2}')) | head -n 1 | awk '{print $2}'",
-    {cwd: cmdargs[0]},
-    function(error, stdout, stderr) {
-      if (stderr !== '') {
-        console.log('stderr: ' + stderr);
-        return;
-      }
-      if (error !== null) {
-        console.log('exec error: ' + error);
-        return;
-      }
-      get_tree(stdout, cmdargs[0], cmdargs[1]);
-    }
-  );
+  // Process repo's gush.json file
+  exec("git cat-file -p gush_json", {cwd: cmdargs[0]}, function(error, stdout, stderr) {
+    handle_error(error, stderr);
+    var cfg = JSON.parse(stdout.toString());
+    // Get the tree object of the commit object pointed to by HEAD.
+    var cmd = "git cat-file -p $(cat $(cat HEAD | awk '{print $2}')) | head -n 1 | awk '{print $2}'";
+    exec(cmd, {cwd: cmdargs[0]}, function(error, stdout, stderr) {
+      handle_error(error, stderr);
+      get_tree(stdout, cmdargs[0], cfg);
+    });
+  });
 };
-
 main();
