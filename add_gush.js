@@ -23,8 +23,36 @@ var add_gush_file = function(cwd, gush_path, cb) {
     gush_path = path.join(gush_path, '.gush.json');
   }
   exec(util.format("git hash-object -w %s", gush_path), {cwd: cwd}, function(error, stdout, stderr) {
-    var err = {error: error, stderr: stderr};
-    cb(err, stdout);
+    var my_err = error || stderr || null;
+    cb(my_err, stdout);
+  });
+};
+
+/**
+ * This function adds an annotated tag to the current repository.
+ * @param cwd path to git repository
+ * @param hash SHA-1 hash of object to tag
+ * @param name tag name
+ * @param message message
+ * @param cb callback function to execute
+ */
+var add_tag_file  = function(cwd, hash, name, message, cb) {
+  exec(util.format("git tag -a %s -m '%s' %s", name, message, hash), {cwd: cwd}, function(error, stdout, stderr) {
+    var my_err = error || stderr || null;
+    cb(my_err, stdout);
+  });
+};
+
+/**
+ * This function deletes a tag from a repository
+ * @param cwd path to git repository
+ * @param name tag name
+ * @param cb callback function to execute
+ */
+var delete_tag = function(cwd, name, cb) {
+  exec(util.format("git tag -d %s", name), {cwd: cwd}, function(error, stdout, stderr) {
+    var my_err = error || stderr || null;
+    cb(my_err, stdout);
   });
 };
 
@@ -35,9 +63,18 @@ var add_gush_file = function(cwd, gush_path, cb) {
  * @param cb callback function to execute
  */
 var add_gush_tag  = function(cwd, hash, cb) {
-  exec(util.format("git tag -a gush_json %s -m '.gush.json'", hash), {cwd: cwd}, function(error, stdout, stderr) {
-    var err = {error: error, stderr: stderr};
-    cb(err, stdout);
+  add_tag_file(cwd, hash, 'gush_json', '.gush.json', function(error, hash) {
+    // If tag already exists, delete it and attempt to create the tag again
+    if (error && error.hasOwnProperty('code') && error.code === 127) {
+      delete_tag(cwd, 'gush_json', function(inner_error, inner_stdout) {
+        console.log(inner_stdout);
+        err.handle_error(inner_error);
+        add_tag_file(cwd, hash, cb);
+      });
+    }
+    else {
+      cb(error, hash);
+    }
   });
 };
 
@@ -57,12 +94,13 @@ var main = function() {
   console.log('CWD: ' + cwd);
  
   // Get the hash of the current .gush.json file
-  add_gush_file(cwd, gush_path, function(err, hash) {
-    err.handle_error(err);
+  add_gush_file(cwd, gush_path, function(my_err, hash) {
+    err.handle_error(my_err);
+    console.log('Added .gush.json!');
 
     // Create a tag object for the current .gush.json file
-    add_gush_tag(cwd, hash, function(err, tag_hash) {
-      err.handle_error(err);
+    add_gush_tag(cwd, hash, function(my_err, tag_hash) {
+      err.handle_error(my_err);
       console.log(util.format("Successfully added & tagged current .git.json file: %s!", tag_hash));
     });
   });
