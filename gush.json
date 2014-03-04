@@ -1,20 +1,12 @@
-// Example Gitree.json file
 {
-  "clear_new_path": true,
-  "paths": [
-    {
-      "repo_path": "*",
-      "new_path": "/app/current"
-    }
-  ],
   "commands": [
     {
       "command": "bundle install --path vendor/bundle",
-      "cwd": "/app/current"
+      "cwd": "$GIT_REPO"
     },
     {
       "command": "rake assets:precompile",
-      "cwd": "/app/current"
+      "cwd": "$GIT_REPO"
     }
   ]
 }
