@@ -21,7 +21,7 @@ var add_gush_config = function(options, cb) {
   git.add_git_object(options.cwd, options.path, function(error, hash) {
     options.hash = hash;
     git.add_tag(options, function(inner_error, inner_stdout) {
-      var my_err = [error, inner_error].join("\n");
+      var my_err = (error || inner_error) ? {error: error, inner_error: inner_error} :  null;
       cb(my_err, inner_stdout);
     }); 
   });
