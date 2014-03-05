@@ -34,7 +34,7 @@ var main = function() {
   // Get path to gush config file
   var script_name = path.basename(process.argv[1]);
   var cmdargs = process.argv.slice(2,process.argv.length);
-  if (cmdargs.length <= 2) {
+  if (cmdargs.length < 2) {
     console.error(util.format("Usage: %s add /path/to/gush/config/file [/path/to/git/repository]", script_name));
     process.exit(1);
   }
