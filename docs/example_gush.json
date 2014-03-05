@@ -7,6 +7,10 @@
     {
       "command": "rake assets:precompile",
       "cwd": "$GIT_REPO"
+    },
+    {
+      "command": "cp -R public/assets/* /app/current/assets/"
+      "cwd": "$GIT_REPO"
     }
   ]
 }
