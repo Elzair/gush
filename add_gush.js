@@ -5,7 +5,7 @@ var exec       = require('child_process').exec
   , path       = require('path')
   , util       = require('util')
   , err        = require('./lib/err')
-  , config     = require('./lib/config')
+  , git        = require('./lib/git')
   ;
 
 /*
@@ -19,39 +19,9 @@ var add_gush_file = function(cwd, gush_path, cb) {
   if (path.basename(gush_path) !== '.gush.json') {
     gush_path = path.join(gush_path, '.gush.json');
   }
-  exec(util.format("git hash-object -w %s", gush_path), {cwd: cwd}, function(error, stdout, stderr) {
-    var my_err = error || stderr || null;
-    cb(my_err, stdout);
-  });
+  git.add_git_object(cwd, gush_path, cb);
 };
 
-/**
- * This function adds an annotated tag to the current repository.
- * @param cwd path to git repository
- * @param hash SHA-1 hash of object to tag
- * @param name tag name
- * @param message message
- * @param cb callback function to execute
- */
-var add_tag_object  = function(cwd, hash, name, message, cb) {
-  exec(util.format("git tag -a %s -m '%s' %s", name, message, hash), {cwd: cwd}, function(error, stdout, stderr) {
-    var my_err = error || stderr ? {error: error, stderr: stderr} :  null;
-    cb(my_err, stdout);
-  });
-};
-
-/**
- * This function deletes a tag from a repository
- * @param cwd path to git repository
- * @param name tag name
- * @param cb callback function to execute
- */
-var delete_tag_object = function(cwd, name, cb) {
-  exec(util.format("git tag -d %s", name), {cwd: cwd}, function(error, stdout, stderr) {
-    var my_err = (error || stderr) ? {error: error, stderr: stderr} :  null;
-    cb(my_err, stdout);
-  });
-};
 
 /**
  * This function adds a tag to the current .gush.json file.
@@ -60,12 +30,12 @@ var delete_tag_object = function(cwd, name, cb) {
  * @param cb callback function to execute
  */
 var add_gush_tag  = function(cwd, hash, cb) {
-  add_tag_object(cwd, hash, 'gush_json', '.gush.json', function(error, stdout) {
+  git.add_tag_object(cwd, hash, 'gush_json', '.gush.json', function(error, stdout) {
     // If tag already exists, delete it and attempt to create the tag again
     if (error && error.hasOwnProperty('error') && error.error.hasOwnProperty('code') && error.error.code === 128) {
-      delete_tag_object(cwd, 'gush_json', function(inner_error, inner_stdout) {
+      git.delete_tag_object(cwd, 'gush_json', function(inner_error, inner_stdout) {
         err.handle_error(inner_error);
-        add_tag_object(cwd, hash, 'gush_json', '.gush.json', cb);
+        git.add_tag_object(cwd, hash, 'gush_json', '.gush.json', cb);
       });
     }
     else if (error) {
