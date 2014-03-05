@@ -4,6 +4,7 @@ var exec       = require('child_process').exec
   , fs         = require('fs')
   , path       = require('path')
   , util       = require('util')
+  , minimist   = require('minimist')
   , err        = require('./lib/err')
   , git        = require('./lib/git')
   ;
@@ -31,35 +32,29 @@ var add_gush_config = function(options, cb) {
  * This is the main function.
  */
 var main = function() {
-  // Get path to gush config file
-  var script_name = path.basename(process.argv[1]);
-  var cmdargs = process.argv.slice(2,process.argv.length);
-  if (cmdargs.length < 2) {
-    console.error(util.format("Usage: %s add /path/to/gush/config/file [/path/to/git/repository]", script_name));
-    process.exit(1);
-  }
-  var cmd = cmdargs[0];
-  if (cmd !== 'add') {
-    console.error(util.format("Usage: %s add /path/to/gush/config/file [/path/to/git/repository]", script_name));
-    process.exit(1);
-  }
-
-  // Get options
+  // Get command line arguments
+  var cmd = process.argv[2];
+  var argv = minimist(process.argv.slice(3));
+  console.log(util.inspect(argv));
   var options = {};
-  options.path = cmdargs[1];
-  options.cwd = cmdargs[2] || process.cwd();
-  options.tag_message = path.basename(options.path);
-  options.tag_name = options.tag_message.replace(/\./g, "_");
-  options.overwrite = true;
-  options.annotated = true;
+
+  if (cmd === 'add') {
+    options.path = argv.path || path.join(process.cwd(), '.gush.development.json');
+    options.cwd = argv.cwd || process.cwd();
+    options.tag_name = argv.name || path.basename(argv.path).replace(/\./g, "_");
+    options.tag_message = argv.message || path.basename(options.path);
+    options.overwrite = argv.hasOwnProperty('o') ? true : false;
+    options.annotated = true;
+    console.log(util.inspect(options));
  
-  add_gush_config(options, function(error, stdout) {
-    err.handle_error(error);
-    if (stdout !== undefined && stdout !== null && stdout !== '') {
-      console.log(stdout);
-    }
-    console.log("Successfully added & tagged current gush config file!");
-  });
+    //add_gush_config(options, function(error, stdout) {
+    //  err.handle_error(error);
+    //  if (stdout !== undefined && stdout !== null && stdout !== '') {
+    //    console.log(stdout);
+    //  }
+    //  console.log("Successfully added & tagged current gush config file!");
+    //});
+  }
 };
 
 main();
