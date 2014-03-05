@@ -16,9 +16,6 @@ var exec       = require('child_process').exec
  * @param cb callback function to execute
  */
 var add_gush_file = function(cwd, gush_path, cb) {
-  if (path.basename(gush_path) !== '.gush.json') {
-    gush_path = path.join(gush_path, '.gush.json');
-  }
   git.add_git_object(cwd, gush_path, cb);
 };
 
@@ -31,7 +28,7 @@ var add_gush_file = function(cwd, gush_path, cb) {
  */
 var add_gush_tag  = function(cwd, hash, cb) {
   git.add_tag_object(cwd, hash, 'gush_json', '.gush.json', function(error, stdout) {
-    // If tag already exists, delete it and attempt to create the tag again
+    // If tag already exists, delete it and tag the new object
     if (error && error.hasOwnProperty('error') && error.error.hasOwnProperty('code') && error.error.code === 128) {
       git.delete_tag_object(cwd, 'gush_json', function(inner_error, inner_stdout) {
         err.handle_error(inner_error);
@@ -51,25 +48,25 @@ var add_gush_tag  = function(cwd, hash, cb) {
  * This is the main function.
  */
 var main = function() {
-  // Get directory of .gush.json file
+  // Get path to gush config file
   var script_name = path.basename(process.argv[1]);
   var cmdargs = process.argv.slice(3,process.argv.length);
   var gush_path = cmdargs[0];
   if (!gush_path) {
-    console.error(util.format("Usage: %s add /directory/of/gush.json/file [/path/to/git/repository]", script_name));
+    console.error(util.format("Usage: %s add /path/to/gush/config/file [/path/to/git/repository]", script_name));
     process.exit(1);
   }
   var cwd = cmdargs[1] || process.cwd();
  
   // Get the hash of the current .gush.json file
-  add_gush_file(cwd, gush_path, function(my_err, hash) {
-    err.handle_error(my_err);
-    console.log('Added .gush.json!');
+  add_gush_file(cwd, gush_path, function(error, hash) {
+    err.handle_error(error);
+    console.log('Added gush config file to repository!');
 
     // Create a tag object for the current .gush.json file
-    add_gush_tag(cwd, hash, function(my_err, stdout) {
-      err.handle_error(my_err);
-      console.log("Successfully added & tagged current .git.json file!");
+    add_gush_tag(cwd, hash, function(error, stdout) {
+      err.handle_error(error);
+      console.log("Successfully added & tagged current gush config file!");
     });
   });
 };
