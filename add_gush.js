@@ -6,7 +6,6 @@ var exec       = require('child_process').exec
   , path       = require('path')
   , util       = require('util')
   , zlib       = require('zlib')
-  , dateformat = require('dateformat')
   , err        = require('./lib/err')
   , config     = require('./lib/config')
   ;
