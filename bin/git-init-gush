@@ -19,7 +19,7 @@ var main = function() {
   var options = {};
 
   // Ensure valid gush config file name (i.e. .gush.environment.json)
-  if (!path.basename(/^\.gush\.[a-z]+\.json$/.exec(gush_path))) {
+  if (!/^\.gush\.[a-z]+\.json$/.exec(path.basename(gush_path))) {
     err.handle_error("Invalid gush config file name!");
   }
   var environment = path.basename(gush_path).split(".")[2];
