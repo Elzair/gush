@@ -6,16 +6,12 @@ var path       = require('path')
   , gush       = require('../lib/gush')
   ;
 
-/**
- * This is the main function.
- */
 var main = function() {
   // Get path to gush config
   if (process.argv.length !== 3) {
     err.handle_error(util.format("Usage: %s /path/to/.gush_environment.json", process.argv[1]));
   }
   var gush_path = process.argv[2];
-  console.log(gush_path);
   var options = {};
 
   // Ensure valid gush config file name (i.e. .gush.environment.json)
@@ -32,10 +28,7 @@ var main = function() {
 
   gush.add_config(options, function(error, stdout) {
     err.handle_error(error);
-    if (stdout !== undefined && stdout !== null && stdout !== '') {
-      console.log(stdout);
-    }
-    console.log("Successfully added & tagged current gush config file!");
+    console.log("Successfully added & tagged current gush config file! " + stdout);
   });
 };
 
