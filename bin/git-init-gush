@@ -2,7 +2,6 @@
 
 var path       = require('path')
   , util       = require('util')
-  , minimist   = require('minimist')
   , err        = require('../lib/err')
   , gush       = require('../lib/gush')
   ;
@@ -11,18 +10,21 @@ var path       = require('path')
  * This is the main function.
  */
 var main = function() {
-  // Get command line arguments
-  var argv = minimist(process.argv.slice(2));
-  console.log(util.inspect(argv));
+  // Get path to gush config
+  if (process.argv.length !== 3) {
+    err.handle_error(util.format("Usage: %s /path/to/.gush_environment.json", process.argv[1]));
+  }
+  var gush_path = process.argv[2];
+  console.log(gush_path);
   var options = {};
 
   // Ensure valid gush config file name (i.e. .gush.environment.json)
-  if (!argv.path || !path.basename(/^\.gush\.[a-z]+\.json$/.exec(argv.path))) {
+  if (!path.basename(/^\.gush\.[a-z]+\.json$/.exec(gush_path))) {
     err.handle_error("Invalid gush config file name!");
   }
-  var environment = argv.path.split(".")[2];
+  var environment = path.basename(gush_path).split(".")[2];
 
-  options.path = argv.path;
+  options.path = gush_path;
   options.cwd = process.cwd();
   options.tag_name = "gush_json";
   options.tag_message = environment;
