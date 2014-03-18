@@ -1,8 +1,11 @@
 {
   "name": "gush",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Gush helps facilitate git-based deployments.",
-  "main": "add_gush.js",
+  "main": "./bin/git-init-gush",
+  "bin": {
+    "git-init-gush": "./bin/git-init-gush"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -12,7 +15,7 @@
     "deployment"
   ],
   "author": "Philip Woods",
-  "license": "BSD-2-Clause",
+  "license": "MIT",
   "dependencies": {
     "minimist": "0.0.8"
   }
