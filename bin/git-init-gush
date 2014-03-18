@@ -3,8 +3,8 @@
 var path       = require('path')
   , util       = require('util')
   , minimist   = require('minimist')
-  , err        = require('./lib/err')
-  , git        = require('./lib/git')
+  , err        = require('../lib/err')
+  , git        = require('../lib/git')
   ;
 
 /**
