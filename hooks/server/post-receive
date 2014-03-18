@@ -23,8 +23,6 @@ var main = function() {
   get_gush_file(options, function(error, stdout, stderr) {
     handle_error(error, stderr);
     console.log(stdout);
-    //var cfg = JSON.parse(stdout.toString());
-    // Get the tree object of the commit object pointed to by HEAD.
     exec("git checkout -f master", options, function(error, stdout, stderr) {
       handle_error(error, stderr);
       console.log(stdout);
