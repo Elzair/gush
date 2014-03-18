@@ -1,6 +1,6 @@
 {
   "name": "gush",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Gush helps facilitate git-based deployments.",
   "main": "./bin/git-init-gush",
   "bin": {
@@ -16,7 +16,5 @@
   ],
   "author": "Philip Woods",
   "license": "MIT",
-  "dependencies": {
-    "minimist": "0.0.8"
-  }
+  "dependencies": {}
 }
