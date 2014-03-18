@@ -12,61 +12,22 @@ var handle_error = function(error, stderr) {
   if (error !== null) { console.error('exec error: ' + error); process.exit(1); }
 };
 
-// Get blob object by hash and copy it to the new working directory
-var get_blob = function(hash, cwd, nwd) {
-  exec("git cat-file -p " + hash + " > " + nwd, {cwd: cwd}, function(error, stdout, stderr) {
-      handle_error(error, stderr);
-      if (stdout !== '') { console.log(stdout); }
-  });
-};
-
-// Parse tree object
-var get_tree_helper = function(stdout, cwd, cfg) {
-  var lines = stdout.split('\n'), i = 0, line = '', dirname = '', fname = '', hash = '', np = '';
-  // First handle all the blobs
-  for (i=0; i<lines.length; i++) {
-    line = lines[i].split(' ');
-    if (line[1] === 'blob') {
-      fname = lines[i].substring(lines[i].indexOf('\t')+1);
-      np = nwd + '/' + fname;
-      hash = lines[i].substring(12, 42);
-      get_blob(hash, cwd, np);
-    }
-  }
-  // Then handle all the subtrees
-  for (i=0; i<lines.length; i++) {
-    line = lines[i].split(' ');
-    if (line[1] === 'tree') {
-      dirname = lines[i].substring(lines[i].indexOf('\t')+1);
-      np = nwd + '/' + dirname;
-      // Ensure destination directory exists
-      fs.mkdirSync(np);
-      hash = lines[i].substring(12, 42);
-      get_tree(hash, cwd, np);
-    }
-  }
-};
-
-// Get tree object by hash
-var get_tree = function(hash, cwd, cfg) {
-  exec("git cat-file -p " + hash, {cwd: cwd}, function(error, stdout, stderr) {
-    handle_error(error, stderr);
-    get_tree_helper(stdout, cwd, cfg);
-  });
+var get_gush_file = function(options, cb) {
+  // Process repo's gush.json file
+  exec("git cat-file -p gush_json", options, cb);
 };
 
 var main = function() {
   // Get arguments passed to script
-  var cmdargs = process.argv.slice(2,process.argv.length);
-  // Process repo's gush.json file
-  exec("git cat-file -p gush_json", {cwd: cmdargs[0]}, function(error, stdout, stderr) {
+  var options = {cwd: process.cwd()};
+  get_gush_file(options, function(error, stdout, stderr) {
     handle_error(error, stderr);
-    var cfg = JSON.parse(stdout.toString());
+    console.log(stdout);
+    //var cfg = JSON.parse(stdout.toString());
     // Get the tree object of the commit object pointed to by HEAD.
-    var cmd = "git cat-file -p $(cat $(cat HEAD | awk '{print $2}')) | head -n 1 | awk '{print $2}'";
-    exec(cmd, {cwd: cmdargs[0]}, function(error, stdout, stderr) {
+    exec("git checkout -f master", options, function(error, stdout, stderr) {
       handle_error(error, stderr);
-      get_tree(stdout, cmdargs[0], cfg);
+      console.log(stdout);
     });
   });
 };
