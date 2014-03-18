@@ -24,7 +24,6 @@ var main = function() {
   options.cwd = process.cwd();
   options.tag_name = "gush_json";
   options.tag_message = environment;
-  console.log(util.inspect(options));
 
   gush.add_config(options, function(error, stdout) {
     err.handle_error(error);
